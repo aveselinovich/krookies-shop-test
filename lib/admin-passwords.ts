@@ -54,10 +54,25 @@ export async function authenticateAdminByEmail(email: string, password: string) 
   });
 
   if (!user || user.role !== UserRole.admin) {
+    console.error("staff-login: admin user not found", {
+      email: normalizedEmail,
+    });
     throw new Error("invalid_staff_credentials");
   }
 
-  if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+  if (!user.passwordHash) {
+    console.error("staff-login: admin user has no password hash", {
+      userId: user.id,
+      email: normalizedEmail,
+    });
+    throw new Error("invalid_staff_credentials");
+  }
+
+  if (!verifyPassword(password, user.passwordHash)) {
+    console.error("staff-login: password mismatch", {
+      userId: user.id,
+      email: normalizedEmail,
+    });
     throw new Error("invalid_staff_credentials");
   }
 
