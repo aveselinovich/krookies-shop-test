@@ -1,0 +1,203 @@
+import { DeliveryStatus, OrderStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { normalizePhone, validatePhone } from "@/lib/phone";
+import { createYookassaPayment, YookassaWebhookBody, yookassaAmountToKopecks } from "@/lib/yookassa";
+
+type CreateOrderInput = {
+  customer: { name: string; phone: string; email?: string };
+  delivery: {
+    city: string;
+    street: string;
+    house: string;
+    apartment?: string;
+    entrance?: string;
+    floor?: string;
+    intercom?: string;
+    desiredDate?: string;
+    desiredSlot?: string;
+    comment?: string;
+  };
+  comment?: string;
+  items: { productId: string; quantity: number }[];
+};
+
+export async function createOrder(input: CreateOrderInput) {
+  if (!input.items?.length) throw new Error("cart_is_empty");
+
+  const customerName = input.customer.name.trim();
+  const customerPhone = normalizePhone(input.customer.phone);
+  const customerEmail = input.customer.email?.trim().toLowerCase() || null;
+
+  if (!customerName) throw new Error("customer_name_required");
+  if (!validatePhone(customerPhone)) throw new Error("invalid_phone");
+  if (customerEmail && !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error("invalid_email");
+  if (!input.delivery.city.trim()) throw new Error("delivery_city_required");
+  if (!input.delivery.street.trim()) throw new Error("delivery_street_required");
+  if (!input.delivery.house.trim()) throw new Error("delivery_house_required");
+
+  const normalizedItems = input.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) }));
+  if (normalizedItems.some((item) => !item.quantity || item.quantity <= 0)) throw new Error("invalid_quantity");
+
+  const productIds = normalizedItems.map((item) => item.productId);
+  const products = await prisma.product.findMany({ where: { id: { in: productIds }, isPublished: true } });
+  if (products.length !== new Set(productIds).size) throw new Error("product_not_found");
+
+  const unavailableProduct = products.find((product) => !product.isAvailable);
+  if (unavailableProduct) throw new Error("product_unavailable");
+
+  const orderItems = normalizedItems.map((item) => {
+    const product = products.find((current) => current.id === item.productId);
+    if (!product) throw new Error("product_not_found");
+    return {
+      productId: product.id,
+      productName: product.title,
+      productPrice: product.price,
+      quantity: item.quantity,
+      total: product.price * item.quantity,
+    };
+  });
+
+  const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+  const discount = 0;
+  const total = subtotal - discount;
+
+  const user = await prisma.user.upsert({
+    where: { phone: customerPhone },
+    update: { name: customerName, email: customerEmail },
+    create: { name: customerName, phone: customerPhone, email: customerEmail },
+  });
+
+  const order = await prisma.order.create({
+    data: {
+      userId: user.id,
+      customerName,
+      customerPhone,
+      customerEmail,
+      status: "pending_confirmation",
+      paymentStatus: "pending",
+      deliveryStatus: "not_created",
+      subtotal,
+      discount,
+      total,
+      deliveryProvider: "yandex_manual",
+      deliveryPaymentType: "external_yandex_link",
+      deliveryCity: input.delivery.city.trim(),
+      deliveryStreet: input.delivery.street.trim(),
+      deliveryHouse: input.delivery.house.trim(),
+      deliveryApartment: input.delivery.apartment?.trim() || null,
+      deliveryEntrance: input.delivery.entrance?.trim() || null,
+      deliveryFloor: input.delivery.floor?.trim() || null,
+      deliveryIntercom: input.delivery.intercom?.trim() || null,
+      deliveryDesiredDate: input.delivery.desiredDate ? new Date(input.delivery.desiredDate) : null,
+      deliveryDesiredSlot: input.delivery.desiredSlot || null,
+      deliveryComment: input.delivery.comment?.trim() || null,
+      customerComment: input.comment?.trim() || null,
+      items: { create: orderItems },
+    },
+    include: { items: true },
+  });
+
+  return { orderId: order.id, orderNumber: order.orderNumber, status: order.status, total: order.total };
+}
+
+export async function updateOrderManagerComment(orderId: string, managerComment: string) {
+  return prisma.order.update({ where: { id: orderId }, data: { managerComment } });
+}
+
+export async function updateOrderStatus(orderId: string, nextStatus: OrderStatus) {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new Error("order_not_found");
+
+  const data: { status: OrderStatus; deliveryStatus?: DeliveryStatus } = { status: nextStatus };
+
+  if (nextStatus === "delivered") {
+    data.deliveryStatus = "delivered";
+  }
+
+  return prisma.order.update({ where: { id: orderId }, data });
+}
+
+export async function updateOrderDeliveryStatus(orderId: string, deliveryStatus: DeliveryStatus) {
+  const data: { deliveryStatus: DeliveryStatus; status?: OrderStatus } = { deliveryStatus };
+  if (deliveryStatus === "delivered") data.status = "delivered";
+  return prisma.order.update({ where: { id: orderId }, data });
+}
+
+export async function markPaymentLinkSent(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payment: true } });
+  if (!order) throw new Error("order_not_found");
+  if (!order.payment?.paymentUrl) throw new Error("payment_link_not_found");
+  return prisma.order.update({ where: { id: orderId }, data: { paymentLinkSent: true, paymentLinkSentAt: new Date() } });
+}
+
+export async function createOrderPaymentLink(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payment: true } });
+  if (!order) throw new Error("order_not_found");
+  if (order.status !== "pending_confirmation") throw new Error("order_must_be_pending_confirmation");
+  if (order.paymentStatus !== "pending") throw new Error("payment_status_must_be_pending");
+  if (order.total <= 0) throw new Error("invalid_order_total");
+  if (order.payment?.paymentUrl) return { paymentUrl: order.payment.paymentUrl, orderStatus: order.status, alreadyExists: true };
+
+  const yookassaPayment = await createYookassaPayment({
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    amount: order.total,
+    description: `Заказ KROOKIES #${order.orderNumber}`,
+  });
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: "pending_payment",
+      payment: {
+        create: {
+          provider: "yookassa",
+          providerPaymentId: yookassaPayment.providerPaymentId,
+          status: "pending",
+          amount: order.total,
+          currency: "RUB",
+          paymentUrl: yookassaPayment.paymentUrl,
+          rawResponse: yookassaPayment.rawResponse,
+        },
+      },
+    },
+    include: { payment: true },
+  });
+
+  return { paymentUrl: updatedOrder.payment?.paymentUrl, orderStatus: updatedOrder.status, alreadyExists: false };
+}
+
+export async function handleYookassaWebhook(body: YookassaWebhookBody) {
+  const event = body.event;
+  const providerPaymentId = body.object.id;
+  if (!providerPaymentId) throw new Error("provider_payment_id_missing");
+
+  const payment = await prisma.payment.findUnique({ where: { providerPaymentId }, include: { order: true } });
+  if (!payment) throw new Error("payment_not_found");
+
+  const order = payment.order;
+  if (body.object.amount?.value) {
+    const webhookAmount = yookassaAmountToKopecks(body.object.amount.value);
+    if (webhookAmount !== payment.amount) throw new Error("payment_amount_mismatch");
+  }
+
+  if (event === "payment.succeeded") {
+    if (payment.status === "paid" && order.paymentStatus === "paid") return { ok: true, alreadyProcessed: true };
+    await prisma.$transaction([
+      prisma.payment.update({ where: { id: payment.id }, data: { status: "paid", paidAt: new Date(), rawWebhook: body } }),
+      prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "paid", status: "accepted" } }),
+    ]);
+    return { ok: true, alreadyProcessed: false };
+  }
+
+  if (event === "payment.canceled") {
+    if (payment.status === "paid") return { ok: true, alreadyProcessed: true };
+    await prisma.$transaction([
+      prisma.payment.update({ where: { id: payment.id }, data: { status: "failed", rawWebhook: body } }),
+      prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "failed" } }),
+    ]);
+    return { ok: true, alreadyProcessed: false };
+  }
+
+  return { ok: true, ignored: true };
+}

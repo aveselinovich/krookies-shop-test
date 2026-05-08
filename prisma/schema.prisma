@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  customer
+  admin
+}
+
+enum OrderStatus {
+  pending_confirmation
+  pending_payment
+  accepted
+  baking
+  ready
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum DeliveryStatus {
+  not_created
+  payment_link_sent
+  delivered
+}
+
+enum ProductBadge {
+  hit
+  new
+  limited
+}
+
+enum OtpPurpose {
+  login
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  phone     String   @unique
+  email     String?
+  role      UserRole @default(customer)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  title            String
+  slug             String        @unique
+  shortDescription String
+  description      String?
+  price            Int
+  oldPrice         Int?
+  weight           String
+  composition      String
+  allergens        String?
+  imageUrl         String
+  images           String[]      @default([])
+  badge            ProductBadge?
+  isAvailable      Boolean       @default(true)
+  isPublished      Boolean       @default(true)
+  sortOrder        Int           @default(0)
+  orderItems       OrderItem[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([slug])
+  @@index([isPublished])
+  @@index([isAvailable])
+  @@map("products")
+}
+
+model Order {
+  id                    String         @id @default(cuid())
+  orderNumber           Int            @unique @default(autoincrement())
+  userId                String?
+  user                  User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName          String
+  customerPhone         String
+  customerEmail         String?
+  status                OrderStatus    @default(pending_confirmation)
+  paymentStatus         PaymentStatus  @default(pending)
+  deliveryStatus        DeliveryStatus @default(not_created)
+  subtotal              Int
+  discount              Int            @default(0)
+  total                 Int
+  paymentLinkSent       Boolean        @default(false)
+  paymentLinkSentAt     DateTime?
+  deliveryProvider      String         @default("yandex_manual")
+  deliveryPaymentType   String         @default("external_yandex_link")
+  deliveryCity          String
+  deliveryStreet        String
+  deliveryHouse         String
+  deliveryApartment     String?
+  deliveryEntrance      String?
+  deliveryFloor         String?
+  deliveryIntercom      String?
+  deliveryDesiredDate   DateTime?
+  deliveryDesiredSlot   String?
+  deliveryComment       String?
+  managerComment        String?
+  customerComment       String?
+  items                 OrderItem[]
+  payment               Payment?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([deliveryStatus])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName  String
+  productPrice Int
+  quantity     Int
+  total        Int
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          String        @default("yookassa")
+  providerPaymentId String?       @unique
+  status            PaymentStatus @default(pending)
+  amount            Int
+  currency          String        @default("RUB")
+  paymentUrl        String?
+  paidAt            DateTime?
+  rawResponse       Json?
+  rawWebhook        Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([providerPaymentId])
+  @@index([status])
+  @@map("payments")
+}
+
+model OtpCode {
+  id         String     @id @default(cuid())
+  phone      String
+  code       String
+  purpose    OtpPurpose @default(login)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now())
+
+  @@index([phone])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
