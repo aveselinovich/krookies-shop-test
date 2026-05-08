@@ -18,7 +18,7 @@ type CreateOrderInput = {
     comment?: string;
   };
   comment?: string;
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; slug?: string; quantity: number }[];
 };
 
 export async function createOrder(input: CreateOrderInput) {
@@ -35,19 +35,30 @@ export async function createOrder(input: CreateOrderInput) {
   if (!input.delivery.street.trim()) throw new Error("delivery_street_required");
   if (!input.delivery.house.trim()) throw new Error("delivery_house_required");
 
-  const normalizedItems = input.items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) }));
+  const normalizedItems = input.items.map((item) => ({
+    productId: item.productId,
+    slug: item.slug?.trim() || null,
+    quantity: Number(item.quantity),
+  }));
   if (normalizedItems.some((item) => !item.quantity || item.quantity <= 0)) throw new Error("invalid_quantity");
 
-  const productIds = normalizedItems.map((item) => item.productId);
-  const products = await prisma.product.findMany({ where: { id: { in: productIds }, isPublished: true } });
-  if (products.length !== new Set(productIds).size) throw new Error("product_not_found");
-
-  const unavailableProduct = products.find((product) => !product.isAvailable);
-  if (unavailableProduct) throw new Error("product_unavailable");
+  const productIds = normalizedItems.map((item) => item.productId).filter(Boolean);
+  const productSlugs = normalizedItems
+    .map((item) => item.slug)
+    .filter((slug): slug is string => Boolean(slug));
+  const products = await prisma.product.findMany({
+    where: {
+      isPublished: true,
+      OR: [{ id: { in: productIds } }, { slug: { in: productSlugs } }],
+    },
+  });
 
   const orderItems = normalizedItems.map((item) => {
-    const product = products.find((current) => current.id === item.productId);
+    const product = products.find(
+      (current) => current.id === item.productId || (item.slug ? current.slug === item.slug : false)
+    );
     if (!product) throw new Error("product_not_found");
+    if (!product.isAvailable) throw new Error("product_unavailable");
     return {
       productId: product.id,
       productName: product.title,

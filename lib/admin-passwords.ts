@@ -1,23 +1,8 @@
 import crypto from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { findOrCreateUserByPhone } from "@/lib/auth";
-
-type AdminCredentialsStore = {
-  version: 1;
-  admins: Record<
-    string,
-    {
-      passwordHash: string;
-      updatedAt: string;
-    }
-  >;
-};
-
-const STORE_PATH = path.join(process.cwd(), "data", "admin-credentials.json");
 const PRIMARY_ADMIN_PHONE = normalizePhone(process.env.ADMIN_PHONE || "+79959178862");
 const PRIMARY_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "mackacrvena@gmail.com").trim().toLowerCase();
 const PRIMARY_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "krookiesadmin";
@@ -41,39 +26,12 @@ function verifyPassword(password: string, passwordHash: string) {
   return crypto.timingSafeEqual(Buffer.from(storedHash, "hex"), Buffer.from(computedHash, "hex"));
 }
 
-async function ensureStore() {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-
-  try {
-    await fs.access(STORE_PATH);
-  } catch {
-    const initial: AdminCredentialsStore = {
-      version: 1,
-      admins: {},
-    };
-    await fs.writeFile(STORE_PATH, JSON.stringify(initial, null, 2), "utf8");
-  }
-}
-
-async function readStore() {
-  await ensureStore();
-  const raw = await fs.readFile(STORE_PATH, "utf8");
-  return JSON.parse(raw) as AdminCredentialsStore;
-}
-
-async function writeStore(store: AdminCredentialsStore) {
-  await ensureStore();
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
-}
-
 async function setPasswordHash(userId: string, password: string) {
   validatePassword(password);
-  const store = await readStore();
-  store.admins[userId] = {
-    passwordHash: hashPassword(password),
-    updatedAt: new Date().toISOString(),
-  };
-  await writeStore(store);
+  return prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: hashPassword(password) },
+  });
 }
 
 export async function assignAdminPassword(userId: string, password: string) {
@@ -81,33 +39,28 @@ export async function assignAdminPassword(userId: string, password: string) {
 }
 
 export async function removeAdminPassword(userId: string) {
-  const store = await readStore();
-  if (store.admins[userId]) {
-    delete store.admins[userId];
-    await writeStore(store);
-  }
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: null },
+  });
 }
 
 async function ensurePrimaryAdminCredential(user: {
   id: string;
   phone: string;
   role: UserRole;
+  passwordHash: string | null;
 }) {
   if (user.role !== UserRole.admin) return;
   if (normalizePhone(user.phone) !== PRIMARY_ADMIN_PHONE) return;
-
-  const store = await readStore();
-  const currentCredential = store.admins[user.id];
-
-  if (currentCredential && (!process.env.ADMIN_PASSWORD || verifyPassword(PRIMARY_ADMIN_PASSWORD, currentCredential.passwordHash))) {
+  if (user.passwordHash) {
     return;
   }
 
-  store.admins[user.id] = {
-    passwordHash: hashPassword(PRIMARY_ADMIN_PASSWORD),
-    updatedAt: new Date().toISOString(),
-  };
-  await writeStore(store);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: hashPassword(PRIMARY_ADMIN_PASSWORD) },
+  });
 }
 
 async function findAdminForStaffLogin(normalizedEmail: string) {
@@ -139,15 +92,15 @@ export async function authenticateAdminByEmail(email: string, password: string) 
   }
 
   await ensurePrimaryAdminCredential(user);
+  const adminUser = await prisma.user.findUnique({
+    where: { id: user.id },
+  });
 
-  const store = await readStore();
-  const credentials = store.admins[user.id];
-
-  if (!credentials || !verifyPassword(password, credentials.passwordHash)) {
+  if (!adminUser?.passwordHash || !verifyPassword(password, adminUser.passwordHash)) {
     throw new Error("invalid_staff_credentials");
   }
 
-  return user;
+  return adminUser;
 }
 
 export async function changeAdminPassword(userId: string, currentPassword: string, nextPassword: string) {
@@ -163,17 +116,16 @@ export async function changeAdminPassword(userId: string, currentPassword: strin
   }
 
   await ensurePrimaryAdminCredential(user);
+  const adminUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
 
-  const store = await readStore();
-  const credentials = store.admins[userId];
-
-  if (!credentials || !verifyPassword(currentPassword, credentials.passwordHash)) {
+  if (!adminUser?.passwordHash || !verifyPassword(currentPassword, adminUser.passwordHash)) {
     throw new Error("invalid_current_password");
   }
 
-  store.admins[userId] = {
-    passwordHash: hashPassword(nextPassword),
-    updatedAt: new Date().toISOString(),
-  };
-  await writeStore(store);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: hashPassword(nextPassword) },
+  });
 }

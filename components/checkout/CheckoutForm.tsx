@@ -26,6 +26,10 @@ function getCheckoutErrorMessage(error: string) {
       return "Проверьте номер телефона";
     case "cart_is_empty":
       return "Корзина пустая";
+    case "product_not_found":
+      return "Корзина устарела после обновления витрины. Добавьте товары заново";
+    case "product_unavailable":
+      return "Один из товаров сейчас недоступен";
     default:
       return "Не получилось отправить заказ. Попробуйте еще раз";
   }
@@ -76,11 +80,20 @@ export function CheckoutForm() {
     event.preventDefault(); const validationError = validateForm(); if (validationError) { setError(validationError); return; }
     setError(null); setIsSubmitting(true);
     try {
-      const payload = { customer: { name: contact.name.trim(), phone: contact.phone.trim(), email: contact.email.trim() || undefined }, delivery: { city: delivery.city.trim(), street: delivery.street.trim(), house: delivery.house.trim(), apartment: delivery.apartment?.trim() || undefined, entrance: delivery.entrance?.trim() || undefined, floor: delivery.floor?.trim() || undefined, intercom: delivery.intercom?.trim() || undefined, desiredDate: delivery.desiredDate || undefined, desiredSlot: delivery.desiredSlot || undefined, comment: delivery.comment?.trim() || undefined }, items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })) };
+      const payload = { customer: { name: contact.name.trim(), phone: contact.phone.trim(), email: contact.email.trim() || undefined }, delivery: { city: delivery.city.trim(), street: delivery.street.trim(), house: delivery.house.trim(), apartment: delivery.apartment?.trim() || undefined, entrance: delivery.entrance?.trim() || undefined, floor: delivery.floor?.trim() || undefined, intercom: delivery.intercom?.trim() || undefined, desiredDate: delivery.desiredDate || undefined, desiredSlot: delivery.desiredSlot || undefined, comment: delivery.comment?.trim() || undefined }, items: items.map((item) => ({ productId: item.productId, slug: item.slug, quantity: item.quantity })) };
       const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "order_create_failed");
-      window.localStorage.setItem("krookies_last_order", JSON.stringify({ orderId: result.orderId, orderNumber: result.orderNumber, total: result.total, status: result.status }));
-      clearCart(); router.push("/order-created");
+      try {
+        window.localStorage.setItem("krookies_last_order", JSON.stringify({ orderId: result.orderId, orderNumber: result.orderNumber, total: result.total, status: result.status }));
+      } catch {
+        // The order is already created on the server, so a storage failure should not block the success flow
+      }
+      try {
+        clearCart();
+      } catch {
+        // If localStorage is blocked, still continue to the success screen
+      }
+      router.push("/order-created");
     } catch (e) { console.error(e); setError(getCheckoutErrorMessage(e instanceof Error ? e.message : "order_create_failed")); } finally { setIsSubmitting(false); }
   }
   if (!items.length) return <CartEmpty />;

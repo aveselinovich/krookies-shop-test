@@ -1,9 +1,17 @@
+import crypto from "crypto";
 import { PrismaClient, ProductBadge, UserRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const adminPhone = process.env.ADMIN_PHONE || "+79959178862";
 const adminEmail = process.env.ADMIN_EMAIL || "crvenamacka@gmail.com";
+const adminPassword = process.env.ADMIN_PASSWORD || "krookiesadmin";
+
+function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
 
 const products = [
   {
@@ -76,8 +84,21 @@ const products = [
 async function main() {
   await prisma.user.upsert({
     where: { phone: adminPhone },
-    update: { role: UserRole.admin, email: adminEmail, name: "KROOKIES Admin" },
-    create: { phone: adminPhone, email: adminEmail, name: "KROOKIES Admin", role: UserRole.admin },
+    update: {
+      role: UserRole.admin,
+      email: adminEmail,
+      name: "KROOKIES Admin",
+      passwordHash: {
+        set: hashPassword(adminPassword),
+      },
+    },
+    create: {
+      phone: adminPhone,
+      email: adminEmail,
+      name: "KROOKIES Admin",
+      role: UserRole.admin,
+      passwordHash: hashPassword(adminPassword),
+    },
   });
 
   for (const product of products) {
