@@ -112,3 +112,16 @@ export function TrashIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function DragHandleIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="9" cy="7" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="7" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="17" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="17" r="1.1" fill="currentColor" stroke="none" />
+    </IconBase>
+  );
+}

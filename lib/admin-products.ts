@@ -18,7 +18,9 @@ type UpdateAdminProductInput = {
 type CreateAdminProductInput = UpdateAdminProductInput;
 
 export async function getAdminProducts() {
-  return prisma.product.findMany({ orderBy: { createdAt: "asc" } });
+  return prisma.product.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
 }
 
 export async function getAdminProductById(id: string) {
@@ -115,5 +117,39 @@ export async function updateAdminProduct(id: string, input: UpdateAdminProductIn
 export async function deleteAdminProduct(id: string) {
   return prisma.product.delete({
     where: { id },
+  });
+}
+
+export async function reorderAdminProducts(productIds: string[]) {
+  if (!productIds.length) {
+    throw new Error("product_order_required");
+  }
+
+  const products = await prisma.product.findMany({
+    where: {
+      id: {
+        in: productIds,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (products.length !== productIds.length) {
+    throw new Error("product_not_found");
+  }
+
+  await prisma.$transaction(
+    productIds.map((productId, index) =>
+      prisma.product.update({
+        where: { id: productId },
+        data: { sortOrder: index + 1 },
+      })
+    )
+  );
+
+  return prisma.product.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 }
