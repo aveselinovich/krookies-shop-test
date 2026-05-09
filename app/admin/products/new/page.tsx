@@ -17,16 +17,13 @@ export default async function NewAdminProductPage() {
         <div className="mb-8">
           <Link
             href="/admin/products"
-            className="inline-flex w-full justify-center rounded-full bg-[#FFF4F8] px-5 py-3 text-sm font-semibold text-[#54342C] transition hover:bg-[#E6AECB] sm:w-auto"
+            className="inline-flex w-full justify-center rounded-full bg-[#54342C] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#3F2721] sm:w-auto"
           >
             ← Назад к товарам
           </Link>
         </div>
 
         <div className="mb-8">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[#54342C]">
-            NEW PRODUCT
-          </p>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#54342C] md:text-6xl">
             Добавить товар
           </h1>

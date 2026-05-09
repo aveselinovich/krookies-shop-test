@@ -111,3 +111,9 @@ export async function updateAdminProduct(id: string, input: UpdateAdminProductIn
     },
   });
 }
+
+export async function deleteAdminProduct(id: string) {
+  return prisma.product.delete({
+    where: { id },
+  });
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/layout/AdminHeader";
+import { AdminDeleteProductButton } from "@/components/admin/AdminDeleteProductButton";
 import { AdminProductForm } from "@/components/admin/AdminProductForm";
 import { getAdminProductById } from "@/lib/admin-products";
 import { requireAdmin } from "@/lib/permissions";
@@ -27,13 +28,17 @@ export default async function AdminProductPage({ params }: { params: { id: strin
           </Link>
         </div>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-[#54342C] sm:text-4xl md:text-6xl">
-            {product.title}
-          </h1>
-          <p className="mt-5 text-base leading-7 text-[#54342C] sm:text-lg sm:leading-8">
-            Изменения повлияют на карточку товара и будущие заказы
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-[#54342C] sm:text-4xl md:text-6xl">
+              {product.title}
+            </h1>
+            <p className="mt-5 text-base leading-7 text-[#54342C] sm:text-lg sm:leading-8">
+              Изменения повлияют на карточку товара и будущие заказы
+            </p>
+          </div>
+
+          <AdminDeleteProductButton productId={product.id} />
         </div>
 
         <AdminProductForm mode="edit" product={product} />
