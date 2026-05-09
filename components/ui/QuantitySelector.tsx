@@ -14,7 +14,7 @@ export function QuantitySelector({
   value,
   onChange,
   min = 1,
-  max = 99,
+  max = 100,
   className = "",
 }: QuantitySelectorProps) {
   const [inputValue, setInputValue] = useState(String(value));

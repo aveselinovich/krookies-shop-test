@@ -1,4 +1,4 @@
-import { DeliveryStatus, OrderStatus } from "@prisma/client";
+import { DeliveryStatus, OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone, validatePhone } from "@/lib/phone";
 import { createYookassaPayment, YookassaWebhookBody, yookassaAmountToKopecks } from "@/lib/yookassa";
@@ -20,6 +20,15 @@ type CreateOrderInput = {
   comment?: string;
   items: { productId: string; slug?: string; quantity: number }[];
 };
+
+const CUSTOMER_CANCELLABLE_ORDER_STATUSES: OrderStatus[] = [
+  "pending_confirmation",
+  "pending_payment",
+];
+
+export function canCustomerCancelOrder(status: OrderStatus, paymentStatus: PaymentStatus) {
+  return CUSTOMER_CANCELLABLE_ORDER_STATUSES.includes(status) && paymentStatus === "pending";
+}
 
 export async function createOrder(input: CreateOrderInput) {
   if (!input.items?.length) throw new Error("cart_is_empty");
@@ -132,6 +141,36 @@ export async function updateOrderDeliveryStatus(orderId: string, deliveryStatus:
   const data: { deliveryStatus: DeliveryStatus; status?: OrderStatus } = { deliveryStatus };
   if (deliveryStatus === "delivered") data.status = "delivered";
   return prisma.order.update({ where: { id: orderId }, data });
+}
+
+export async function cancelCustomerOrder(userId: string, orderId: string) {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    include: { payment: true },
+  });
+
+  if (!order) throw new Error("order_not_found");
+  if (order.status === "cancelled") return order;
+  if (!canCustomerCancelOrder(order.status, order.paymentStatus)) {
+    throw new Error("order_cannot_be_cancelled");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (order.payment && order.payment.status === "pending") {
+      await tx.payment.update({
+        where: { id: order.payment.id },
+        data: { status: "failed" },
+      });
+    }
+
+    return tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: "cancelled",
+        paymentStatus: order.paymentStatus === "pending" ? "failed" : order.paymentStatus,
+      },
+    });
+  });
 }
 
 export async function markPaymentLinkSent(orderId: string) {

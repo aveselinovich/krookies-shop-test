@@ -2,7 +2,7 @@ import { CartItem, CartState } from "@/types/cart";
 
 export const CART_STORAGE_KEY = "krookies_cart";
 export const CART_UPDATED_EVENT = "krookies-cart-updated";
-export const MAX_CART_ITEM_QUANTITY = 99;
+export const MAX_CART_ITEM_QUANTITY = 100;
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -73,6 +73,11 @@ export function addCartItem(newItem: CartItem) {
         item.productId === newItem.productId
           ? {
               ...item,
+              title: newItem.title,
+              shortDescription: newItem.shortDescription,
+              slug: newItem.slug,
+              imageUrl: newItem.imageUrl,
+              price: newItem.price,
               quantity: Math.min(MAX_CART_ITEM_QUANTITY, item.quantity + newItem.quantity),
             }
           : item

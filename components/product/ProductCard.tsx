@@ -60,6 +60,7 @@ export function ProductCard({ product }: ProductCardProps) {
               product={{
                 productId: product.id,
                 title: product.title,
+                shortDescription: product.shortDescription,
                 slug: product.slug,
                 imageUrl: product.imageUrl,
                 price: product.price,

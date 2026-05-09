@@ -1,6 +1,8 @@
 import { Order, OrderItem, Payment } from "@prisma/client";
 import { formatPrice } from "@/lib/money";
 import { getClientOrderStatusLabel } from "@/components/account/OrderProgress";
+import { AccountCancelOrderButton } from "@/components/account/AccountCancelOrderButton";
+import { canCustomerCancelOrder } from "@/lib/orders";
 
 type FullOrder = Order & { items: OrderItem[]; payment: Payment | null };
 
@@ -39,6 +41,7 @@ function getClientStatusText(order: FullOrder) {
 }
 
 export function AccountOrderDetails({ order }: { order: FullOrder }) {
+  const canCancelOrder = canCustomerCancelOrder(order.status, order.paymentStatus);
   const address = [
     order.deliveryCity,
     order.deliveryStreet,
@@ -72,6 +75,12 @@ export function AccountOrderDetails({ order }: { order: FullOrder }) {
             {getClientOrderStatusLabel(order.status)}
           </span>
         </div>
+
+        {canCancelOrder ? (
+          <div className="mt-5">
+            <AccountCancelOrderButton orderId={order.id} />
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-[24px] bg-[#FFF4F8] p-5">
           <h2 className="font-semibold text-[#54342C]">Что происходит?</h2>

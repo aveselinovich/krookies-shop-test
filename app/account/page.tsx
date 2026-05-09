@@ -4,7 +4,7 @@ import { getAccountOrders } from "@/lib/account-orders";
 import { formatPrice } from "@/lib/money";
 import { AccountShell } from "@/components/account/AccountShell";
 import { getClientOrderStatusLabel } from "@/components/account/OrderProgress";
-import { ArrowRightIcon, BrandSealIcon } from "@/components/ui/Icons";
+import { ArrowRightIcon } from "@/components/ui/Icons";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Личный кабинет — KROOKIES" };
@@ -47,9 +47,11 @@ export default async function AccountPage() {
             </div>
 
             <div className="relative hidden min-h-44 items-center justify-center rounded-3xl bg-[#FFF4F8] p-6 sm:flex sm:min-h-56">
-              <div className="text-[#54342C] drop-shadow-lg">
-                <BrandSealIcon size={150} />
-              </div>
+              <img
+                src="/krookies-brand-seal-transparent.png"
+                alt="KROOKIES"
+                className="h-[110px] w-[110px] object-contain drop-shadow-lg sm:h-[150px] sm:w-[150px]"
+              />
             </div>
           </div>
         </section>
@@ -79,9 +81,11 @@ export default async function AccountPage() {
                   <p className="text-sm text-[#54342C] md:text-center">
                     {order.items.reduce((sum, item) => sum + item.quantity, 0)} товара
                   </p>
-                  <span className="inline-flex w-fit rounded-full bg-[#FFF4F8] px-3 py-1 text-xs font-semibold text-[#54342C] md:mx-auto md:justify-self-center">
-                    {getClientOrderStatusLabel(order.status)}
-                  </span>
+                  <div className="md:flex md:justify-center">
+                    <span className="inline-flex w-fit justify-center text-center rounded-full bg-[#FFF4F8] px-3 py-1 text-xs font-semibold text-[#54342C] md:min-w-[170px]">
+                      {getClientOrderStatusLabel(order.status)}
+                    </span>
+                  </div>
                   <p className="font-bold text-[#54342C] md:text-center">{formatPrice(order.total)}</p>
                   <span className="hidden text-xl text-[#54342C] md:inline">›</span>
                 </Link>

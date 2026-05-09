@@ -14,6 +14,11 @@ type CartItemProps = {
   onRemove: (productId: string) => void;
 };
 
+function truncateDescription(text: string, maxLength = 86) {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trimEnd()}...`;
+}
+
 export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
   const [inputValue, setInputValue] = useState(String(item.quantity));
 
@@ -48,45 +53,53 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
 
   return (
     <div className="rounded-[34px] bg-[#FFFFFF] p-4 shadow-[0_24px_60px_rgba(84,52,44,0.08)] ring-1 ring-[#EFDCCB] md:rounded-3xl md:p-5 md:shadow-lg md:ring-black/5">
-      <div className="md:hidden">
+      <div className="relative md:hidden">
+        <button
+          type="button"
+          onClick={() => onRemove(item.productId)}
+          className="absolute right-0 top-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF1F6] text-[#54342C]"
+          aria-label="Удалить товар"
+        >
+          <XIcon size={20} strokeWidth={2.4} />
+        </button>
+
         <div className="grid grid-cols-[132px_minmax(0,1fr)] items-start gap-4">
           <Link
             href={`/product/${item.slug}`}
-            className="rounded-[30px] border border-[#F0DEC8] bg-[#FFF9F4] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]"
+            className="relative h-[188px] overflow-hidden rounded-[30px] bg-[#FFF4F8]"
           >
-            <div className="flex h-full min-h-[188px] flex-col rounded-[26px] border border-[#F2E4D5] bg-[linear-gradient(180deg,#FFFDF9_0%,#FFF6EE_100%)] p-3">
-              <span className="text-center text-[11px] font-black tracking-[0.18em] text-[#54342C]">
-                KROOKIES
-              </span>
-              <div className="relative mt-2 flex-1 overflow-hidden rounded-[22px]">
-                {item.imageUrl ? (
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.title}
-                    fill
-                    className="object-contain p-1"
-                    sizes="132px"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-[#54342C]">
-                    Нет фото
-                  </div>
-                )}
+            {item.imageUrl ? (
+              <Image
+                src={item.imageUrl}
+                alt={item.title}
+                fill
+                className="object-contain p-2"
+                sizes="132px"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-[#54342C]">
+                Нет фото
               </div>
-              <div className="mt-3 rounded-[20px] bg-[#54342C] px-3 py-2 text-center text-sm font-black leading-5 text-white">
-                {item.title}
-              </div>
-            </div>
+            )}
           </Link>
 
-          <div className="min-w-0 pt-3">
+          <div className="min-w-0 pt-12">
             <Link href={`/product/${item.slug}`}>
-              <h2 className="text-[27px] font-black leading-[1.05] text-[#54342C]">
+              <h2 className="max-w-full break-words text-[22px] font-black leading-[1.08] text-[#54342C] [overflow-wrap:anywhere]">
                 {item.title}
               </h2>
             </Link>
-            <p className="mt-4 text-[14px] leading-6 text-[#54342C] opacity-80">
-              Печенье KROOKIES с фирменной начинкой
+            <p
+              className="mt-4 overflow-hidden text-[14px] leading-6 text-[#54342C] opacity-80"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {truncateDescription(
+                item.shortDescription || "Печенье KROOKIES с фирменной начинкой"
+              )}
             </p>
           </div>
         </div>
@@ -132,15 +145,6 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
               +
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onRemove(item.productId)}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFF1F6] text-[#54342C]"
-            aria-label="Удалить товар"
-          >
-            <XIcon size={22} strokeWidth={2.4} />
-          </button>
         </div>
       </div>
 
@@ -148,13 +152,13 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
         <button
           type="button"
           onClick={() => onRemove(item.productId)}
-          className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4F8] text-[#54342C] transition hover:bg-[#E6AECB] md:bottom-auto md:top-5"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4F8] text-[#54342C] transition hover:bg-[#E6AECB]"
           aria-label="Удалить товар"
         >
           <XIcon size={20} strokeWidth={2.4} />
         </button>
 
-        <div className="grid gap-5 pr-12 sm:grid-cols-[96px_1fr] sm:items-start md:grid-cols-[112px_1fr_180px_160px] md:items-center md:pr-14">
+        <div className="grid gap-5 pr-12 pt-1 sm:grid-cols-[96px_1fr] sm:items-start md:grid-cols-[112px_1fr_180px_160px] md:items-center md:pr-12">
           <Link
             href={`/product/${item.slug}`}
             className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[22px] bg-[#FFF4F8] sm:h-28 sm:w-24 md:w-28"
@@ -164,7 +168,7 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
                 src={item.imageUrl}
                 alt={item.title}
                 fill
-                className="object-cover"
+                className="object-contain p-2"
                 sizes="112px"
               />
             ) : (
@@ -180,8 +184,17 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
                 {item.title}
               </h2>
             </Link>
-            <p className="mt-2 text-sm leading-6 text-[#54342C]">
-              Печенье KROOKIES с фирменной начинкой.
+            <p
+              className="mt-2 overflow-hidden text-sm leading-6 text-[#54342C]"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {truncateDescription(
+                item.shortDescription || "Печенье KROOKIES с фирменной начинкой"
+              )}
             </p>
           </div>
 

@@ -6,7 +6,17 @@ import { QuantitySelector } from "@/components/ui/QuantitySelector";
 import { Button } from "@/components/ui/Button";
 import { addCartItem } from "@/lib/cart";
 
-type AddToCartButtonProps = { product: { id: string; title: string; slug: string; imageUrl: string | null; price: number; isAvailable: boolean } };
+type AddToCartButtonProps = {
+  product: {
+    id: string;
+    title: string;
+    shortDescription?: string | null;
+    slug: string;
+    imageUrl: string | null;
+    price: number;
+    isAvailable: boolean;
+  };
+};
 
 export function AddToCartButton({ product }: AddToCartButtonProps) {
   const router = useRouter();
@@ -15,7 +25,15 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
 
   function handleAddToCart() {
     if (!product.isAvailable) return;
-    addCartItem({ productId: product.id, title: product.title, slug: product.slug, imageUrl: product.imageUrl, price: product.price, quantity });
+    addCartItem({
+      productId: product.id,
+      title: product.title,
+      shortDescription: product.shortDescription,
+      slug: product.slug,
+      imageUrl: product.imageUrl,
+      price: product.price,
+      quantity,
+    });
     setAdded(true);
   }
 

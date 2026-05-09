@@ -36,6 +36,7 @@ export function ProductDetails({ product }: ProductDetailsProps) {
             product={{
               productId: product.id,
               title: product.title,
+              shortDescription: product.shortDescription,
               slug: product.slug,
               imageUrl: product.imageUrl,
               price: product.price,
