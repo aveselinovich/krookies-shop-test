@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { BrandSealIcon } from "@/components/ui/Icons";
 
 export function CartEmpty() {
   return (
     <div className="py-12 text-center">
-      <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-[#FFF4F8] text-4xl">
-        🍪
+      <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-[#FFF4F8] text-[#54342C]">
+        <BrandSealIcon size={58} />
       </div>
 
       <h1 className="text-3xl sm:text-4xl font-black text-[#54342C]">Корзина пустая</h1>

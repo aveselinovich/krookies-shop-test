@@ -2,6 +2,7 @@ import { CartItem, CartState } from "@/types/cart";
 
 export const CART_STORAGE_KEY = "krookies_cart";
 export const CART_UPDATED_EVENT = "krookies-cart-updated";
+export const MAX_CART_ITEM_QUANTITY = 99;
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -70,10 +71,16 @@ export function addCartItem(newItem: CartItem) {
   const nextCart = existingItem
     ? cart.map((item) =>
         item.productId === newItem.productId
-          ? { ...item, quantity: item.quantity + newItem.quantity }
+          ? {
+              ...item,
+              quantity: Math.min(MAX_CART_ITEM_QUANTITY, item.quantity + newItem.quantity),
+            }
           : item
       )
-    : [...cart, newItem];
+    : [
+        ...cart,
+        { ...newItem, quantity: Math.min(MAX_CART_ITEM_QUANTITY, Math.max(1, newItem.quantity)) },
+      ];
 
   saveCartItems(nextCart);
   return nextCart;
@@ -84,7 +91,10 @@ export function addOneCartItem(newItem: Omit<CartItem, "quantity">) {
 }
 
 export function updateCartItemQuantity(productId: string, quantity: number) {
-  const normalizedQuantity = Math.floor(Number(quantity));
+  const normalizedQuantity = Math.min(
+    MAX_CART_ITEM_QUANTITY,
+    Math.floor(Number(quantity))
+  );
 
   if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
     return removeCartItem(productId);

@@ -4,7 +4,7 @@ import { getAccountOrders } from "@/lib/account-orders";
 import { formatPrice } from "@/lib/money";
 import { AccountShell } from "@/components/account/AccountShell";
 import { getClientOrderStatusLabel } from "@/components/account/OrderProgress";
-import { ArrowRightIcon } from "@/components/ui/Icons";
+import { ArrowRightIcon, BrandSealIcon } from "@/components/ui/Icons";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Личный кабинет — KROOKIES" };
@@ -47,7 +47,9 @@ export default async function AccountPage() {
             </div>
 
             <div className="relative hidden min-h-44 items-center justify-center rounded-3xl bg-[#FFF4F8] p-6 sm:flex sm:min-h-56">
-              <div className="text-[110px] leading-none drop-shadow-lg ring-1 ring-black/5 sm:text-[150px]">🍪</div>
+              <div className="text-[#54342C] drop-shadow-lg">
+                <BrandSealIcon size={150} />
+              </div>
             </div>
           </div>
         </section>
@@ -77,7 +79,7 @@ export default async function AccountPage() {
                   <p className="text-sm text-[#54342C] md:text-center">
                     {order.items.reduce((sum, item) => sum + item.quantity, 0)} товара
                   </p>
-                  <span className="inline-flex w-fit rounded-full bg-[#FFF4F8] px-3 py-1 text-xs font-semibold text-[#54342C]">
+                  <span className="inline-flex w-fit rounded-full bg-[#FFF4F8] px-3 py-1 text-xs font-semibold text-[#54342C] md:mx-auto md:justify-self-center">
                     {getClientOrderStatusLabel(order.status)}
                   </span>
                   <p className="font-bold text-[#54342C] md:text-center">{formatPrice(order.total)}</p>

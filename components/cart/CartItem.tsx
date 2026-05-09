@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useState } from "react";
+import { XIcon } from "@/components/ui/Icons";
 import { CartItem as CartItemType } from "@/types/cart";
+import { MAX_CART_ITEM_QUANTITY } from "@/lib/cart";
 import { formatPrice } from "@/lib/money";
 
 type CartItemProps = {
@@ -25,11 +27,12 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const value = event.target.value.replace(/\D/g, "");
-    setInputValue(value);
+    const limitedValue = value ? String(Math.min(MAX_CART_ITEM_QUANTITY, Number(value))) : "";
+    setInputValue(limitedValue);
 
-    if (!value) return;
+    if (!limitedValue) return;
 
-    changeQuantity(Number(value));
+    changeQuantity(Number(limitedValue));
   }
 
   function handleInputBlur() {
@@ -40,7 +43,7 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
       return;
     }
 
-    changeQuantity(value);
+    changeQuantity(Math.min(MAX_CART_ITEM_QUANTITY, value));
   }
 
   return (
@@ -122,6 +125,7 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
             <button
               type="button"
               onClick={() => changeQuantity(item.quantity + 1)}
+              disabled={item.quantity >= MAX_CART_ITEM_QUANTITY}
               className="flex h-12 w-[30%] min-w-[58px] items-center justify-center text-[24px] font-medium text-[#54342C]"
               aria-label="Увеличить количество"
             >
@@ -132,10 +136,10 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
           <button
             type="button"
             onClick={() => onRemove(item.productId)}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFF1F6] text-[26px] font-medium leading-none text-[#54342C]"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FFF1F6] text-[#54342C]"
             aria-label="Удалить товар"
           >
-            ×
+            <XIcon size={22} strokeWidth={2.4} />
           </button>
         </div>
       </div>
@@ -144,10 +148,10 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
         <button
           type="button"
           onClick={() => onRemove(item.productId)}
-          className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4F8] text-2xl font-semibold leading-none text-[#54342C] transition hover:bg-[#E6AECB] md:bottom-auto md:top-5"
+          className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF4F8] text-[#54342C] transition hover:bg-[#E6AECB] md:bottom-auto md:top-5"
           aria-label="Удалить товар"
         >
-          ×
+          <XIcon size={20} strokeWidth={2.4} />
         </button>
 
         <div className="grid gap-5 pr-12 sm:grid-cols-[96px_1fr] sm:items-start md:grid-cols-[112px_1fr_180px_160px] md:items-center md:pr-14">
@@ -212,6 +216,7 @@ export function CartItem({ item, onQuantityChange, onRemove }: CartItemProps) {
               <button
                 type="button"
                 onClick={() => changeQuantity(item.quantity + 1)}
+                disabled={item.quantity >= MAX_CART_ITEM_QUANTITY}
                 className="flex h-10 w-11 items-center justify-center text-lg font-bold text-[#54342C]"
                 aria-label="Увеличить количество"
               >

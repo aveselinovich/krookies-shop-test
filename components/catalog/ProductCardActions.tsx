@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useState } from "react";
-import { addOneCartItem, getCartItem, subscribeCart, updateCartItemQuantity } from "@/lib/cart";
+import { MAX_CART_ITEM_QUANTITY, addOneCartItem, getCartItem, subscribeCart, updateCartItemQuantity } from "@/lib/cart";
 import { CartItem } from "@/types/cart";
 
 const PINK = "#E6AECB";
@@ -25,13 +25,14 @@ export function ProductCardActions({ product }: ProductCardActionsProps) {
   }, [product.productId]);
 
   function changeQuantity(next: number) {
-    updateCartItemQuantity(product.productId, next);
+    updateCartItemQuantity(product.productId, Math.min(MAX_CART_ITEM_QUANTITY, next));
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const value = event.target.value.replace(/\D/g, "");
-    setInputValue(value);
-    if (value) changeQuantity(Number(value));
+    const limitedValue = value ? String(Math.min(MAX_CART_ITEM_QUANTITY, Number(value))) : "";
+    setInputValue(limitedValue);
+    if (limitedValue) changeQuantity(Number(limitedValue));
   }
 
   function handleInputBlur() {
@@ -40,7 +41,7 @@ export function ProductCardActions({ product }: ProductCardActionsProps) {
       changeQuantity(0);
       return;
     }
-    changeQuantity(value);
+    changeQuantity(Math.min(MAX_CART_ITEM_QUANTITY, value));
   }
 
   if (quantity === 0) {
@@ -68,7 +69,7 @@ export function ProductCardActions({ product }: ProductCardActionsProps) {
         className="h-12 w-16 bg-white/50 px-2 text-center font-black outline-none"
         aria-label="Количество товара"
       />
-      <button type="button" onClick={() => changeQuantity(quantity + 1)} className="h-12 w-14 text-xl font-black">+</button>
+      <button type="button" onClick={() => changeQuantity(quantity + 1)} disabled={quantity >= MAX_CART_ITEM_QUANTITY} className="h-12 w-14 text-xl font-black disabled:opacity-40">+</button>
     </div>
   );
 }

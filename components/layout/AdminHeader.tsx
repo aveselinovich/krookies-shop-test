@@ -39,13 +39,13 @@ export function AdminHeader({ user }: { user: User }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/40 backdrop-blur supports-[backdrop-filter]:bg-white/60" style={{ backgroundColor: "rgba(255,249,251,0.7)" }}>
-      <nav className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-3">
+      <nav className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center justify-between gap-3 md:min-w-0 md:flex-1">
           <Link href="/admin" className="flex min-w-0 items-center gap-3">
             <Image src="/logo-cookie.png" alt="KROOKIES" width={44} height={44} className="h-10 w-auto -translate-y-1" />
             <div className="min-w-0">
               <p className="truncate text-base font-black tracking-wide sm:text-lg" style={{ color: BROWN }}>KROOKIES</p>
-              <p className="truncate text-xs opacity-70">{user.phone}</p>
+              <p className="truncate text-xs" style={{ color: "rgba(84,52,44,0.7)" }}>{user.phone}</p>
             </div>
           </Link>
 
@@ -60,7 +60,7 @@ export function AdminHeader({ user }: { user: User }) {
           </button>
         </div>
 
-        <div className="hidden flex-wrap items-center gap-2 md:flex">
+        <div className="hidden shrink-0 flex-wrap items-center justify-end gap-2 md:flex">
           <AdminLink href="/admin">Главная</AdminLink>
           <AdminLink href="/admin/orders">Заказы</AdminLink>
           <AdminLink href="/admin/products">Товары</AdminLink>
