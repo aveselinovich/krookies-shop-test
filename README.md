@@ -75,7 +75,8 @@ http://localhost:3000
 ## Переменные окружения
 
 ```env
-DATABASE_URL="postgresql://..."
+DATABASE_URL="postgresql://postgres.project-ref:password@aws-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://postgres:password@db.project-ref.supabase.co:5432/postgres"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 AUTH_SECRET="replace-with-a-long-random-secret"
 ADMIN_PHONE="+79959178862"
@@ -93,6 +94,8 @@ YOOKASSA_WEBHOOK_SECRET=""
 
 - Создать в Supabase публичный bucket `product-images` или указать своё имя в `SUPABASE_STORAGE_BUCKET`
 - Добавить в env `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`
+- Для Vercel + Prisma + Supabase использовать `DATABASE_URL` в transaction mode `:6543` с `?pgbouncer=true&connection_limit=1`
+- Для Prisma CLI (`db push`, `seed`) использовать `DIRECT_URL` на direct connection `db....supabase.co:5432`
 - Подключить реальные ключи ЮKassa
 - Указать webhook в кабинете ЮKassa: `https://ваш-домен.ru/api/payment/webhook`
 - Усилить webhook проверкой платежа через `GET /v3/payments/{payment_id}`
